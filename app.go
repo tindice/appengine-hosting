@@ -59,7 +59,7 @@ func StaticWebsiteHandler(w http.ResponseWriter, r *http.Request) HttpResult {
 		return HttpResult{Status: http.StatusInternalServerError}
 	}
 
-	if location := ctx.getCleanUrl(); location != "" {
+	if location := ctx.getCleanURL(); location != "" {
 		return HttpResult{Status: http.StatusMovedPermanently, Location: location + ctx.getQuery()}
 	}
 
@@ -92,14 +92,19 @@ func StaticWebsiteHandler(w http.ResponseWriter, r *http.Request) HttpResult {
 	ctx.setHeaders()
 	if res.Header.Get("x-goog-stored-content-encoding") == "identity" {
 		return ctx.sendBlob(etag, lastModified, true)
-	} else {
-		return ctx.sendBlobBody()
 	}
+	return ctx.sendBlobBody()
 }
 
 func makeContext(w http.ResponseWriter, r *http.Request) HandlerContext {
 	bucket := r.URL.Hostname()
 	object := r.URL.EscapedPath()
+
+	if object == "/" {
+		object = "/index.html"
+	} else {
+		log.Debugf(r.Context(), "**** GET %s -- %s", bucket, object)
+	}
 
 	return HandlerContext{
 		w:        w,
@@ -204,7 +209,7 @@ func (ctx *HandlerContext) getRedirect() (int, string) {
 	return ctx.firebase.processRedirects(ctx.r.URL.Path)
 }
 
-func (ctx *HandlerContext) getCleanUrl() string {
+func (ctx *HandlerContext) getCleanURL() string {
 	path := ctx.r.URL.Path
 
 	if ctx.firebase.CleanUrls {
