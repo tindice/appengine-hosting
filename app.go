@@ -1,19 +1,20 @@
-package app
+package main
 
 import (
 	"encoding/json"
 	"encoding/xml"
 	"errors"
-	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/google"
-	"google.golang.org/appengine/blobstore"
-	"google.golang.org/appengine/log"
-	"google.golang.org/appengine/urlfetch"
 	"io"
 	"net/http"
 	"os"
 	"strings"
 	"time"
+
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
+	"google.golang.org/appengine/blobstore"
+	"google.golang.org/appengine/log"
+	"google.golang.org/appengine/urlfetch"
 )
 
 var ErrUnspecified = errors.New("appengine-hosting: unspecified")
@@ -92,13 +93,15 @@ func StaticWebsiteHandler(w http.ResponseWriter, r *http.Request) HttpResult {
 	ctx.setHeaders()
 	if res.Header.Get("x-goog-stored-content-encoding") == "identity" {
 		return ctx.sendBlob(etag, lastModified, true)
+	} else {
+		return ctx.sendBlobBody()
 	}
-	return ctx.sendBlobBody()
 }
 
 func makeContext(w http.ResponseWriter, r *http.Request) HandlerContext {
-	bucket := r.URL.Hostname()
+	bucket := r.Host
 	object := r.URL.EscapedPath()
+	source, _ := google.DefaultTokenSource(r.Context(), "https://www.googleapis.com/auth/devstorage.read_only")
 
 	if object == "/" {
 		object = "/index.html"
@@ -116,7 +119,7 @@ func makeContext(w http.ResponseWriter, r *http.Request) HandlerContext {
 		gcs: &http.Client{
 			Transport: &oauth2.Transport{
 				Base:   &urlfetch.Transport{Context: r.Context()},
-				Source: google.AppEngineTokenSource(r.Context(), "https://www.googleapis.com/auth/devstorage.read_only"),
+				Source: source,
 			},
 		},
 	}
@@ -376,7 +379,9 @@ func setHeaders(h http.Header) {
 	h.Set("Referrer-Policy", "strict-origin-when-cross-origin")
 	h.Set("Strict-Transport-Security", "max-age=86400")
 	h.Set("X-Content-Type-Options", "nosniff")
+	h.Set("X-DNS-Prefetch-Control", "off")
 	h.Set("X-Download-Options", "noopen")
 	h.Set("X-Frame-Options", "SAMEORIGIN")
 	h.Set("X-XSS-Protection", "1; mode=block")
+	h.Set("X-TinCoRAD-Server", "v02.2021")
 }

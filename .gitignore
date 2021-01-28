@@ -15,3 +15,5 @@
 
 # Firebase-like config file
 firebase.json
+
+.DS_Store
